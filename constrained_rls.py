@@ -278,7 +278,7 @@ class ConstrainedRLS:
             growth_penalty = 1.0 - (proximity * 0.7)
             mu_new = mu_new * growth_penalty
         
-        mu_new = np.clip(mu_new, -0.15, 0.20)
+        mu_new = np.clip(mu_new, -0.35, 0.20)
         fixed['mu'] = mu_new
         
         # === RLS: σ ===
