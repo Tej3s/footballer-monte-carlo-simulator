@@ -14,13 +14,15 @@ from scipy.stats import poisson, norm
 import os
 import sys
 
-# Add the parent directory to Python's path so it can find files
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(parent_dir)
+# Add the script's directory to Python's path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(script_dir)
 
-# Change working directory to the parent where CSV files are
-os.chdir(parent_dir)
-
+# Change to the directory containing the CSVs
+if os.path.exists(os.path.join(script_dir, 'players.csv')):
+    os.chdir(script_dir)
+else:
+    os.chdir(os.path.dirname(script_dir))
 
 # Connect to the database
 conn = duckdb.connect('transfermarkt-datasets.duckdb')
