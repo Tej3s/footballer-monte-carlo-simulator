@@ -137,10 +137,10 @@ if run_button:
         
         st.subheader("Monte Carlo Simulation Results")
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Mean Final Value", f"${stats['mean']:,.2f}")
-        col2.metric("Median Final Value", f"${stats['median']:,.2f}")
-        col3.metric("5th Percentile", f"${stats['p5']:,.2f}")
-        col4.metric("95th Percentile", f"${stats['p95']:,.2f}")
+        col1.metric("Mean Final Value", f"€{stats['mean']:,.2f}")
+        col2.metric("Median Final Value", f"€{stats['median']:,.2f}")
+        col3.metric("5th Percentile", f"€{stats['p5']:,.2f}")
+        col4.metric("95th Percentile", f"€{stats['p95']:,.2f}")
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Probability of Increase", f"{stats['prob_increase']*100:.2f}%")
