@@ -9,9 +9,13 @@ from constrained_rls import ConstrainedRLS
 import os
 import sys
 
-# Set the correct working directory
-os.chdir(r"C:\Users\tejas\OneDrive\Documents\ArcStone Securities\Big money moves\Valuation")
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.exists(os.path.join(script_dir, 'players.csv')):
+    os.chdir(script_dir)
+else:
+    os.chdir(os.path.dirname(script_dir))
 sys.path.append(os.getcwd())
+
 
 st.set_page_config(page_title="Footballer Valuation Analysis", layout="wide")
 
