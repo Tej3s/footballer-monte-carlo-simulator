@@ -62,9 +62,13 @@ def build_prior_database(min_valuations: int = 15, verbose: bool = True) -> Dict
     # Age groups (if we have age data)
     age_groups = {
         'young': (0, 22),
-        'prime': (22, 27),
-        'veteran': (27, 35),
-        'aged': (35, 99)
+        'prime_early': (22, 24),
+        'prime_mid':(24, 26),
+        'prime_later': (26, 28),
+        'prime_even_later': (28, 30),
+        'veteran': (30, 32),
+        'aging_veteran': (32,34),
+        'aged': (34, 99)
     }
     
     for position in good_players['position'].unique():
