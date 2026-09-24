@@ -123,14 +123,22 @@ class ConstrainedRLS:
     
     def age_to_group(self, age: Optional[int]) -> Optional[str]:
         """Convert numeric age to age group label."""
-        if age is None:
+         if age is None:
             return None
         if age < 22:
             return 'young'
-        elif age < 27:
-            return 'prime'
-        elif age < 35:
+        elif age < 24:
+            return 'prime_early'
+        elif age < 26:
+            return 'prime_mid'
+        elif age < 28:
+            return 'prime_later'
+        elif age < 30:
+            return 'prime_even_later'
+        elif age < 32:
             return 'veteran'
+        elif age < 34:
+            return 'aging_veteran'
         else:
             return 'aged'
 
