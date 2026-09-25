@@ -29,8 +29,8 @@ class ConstrainedRLS:
         self.edge_case_weights = {
             'extreme_data_weight': 0.25,
             'extreme_prior_weight': 0.75,
-            'normal_data_weight': 0.60,
-            'normal_prior_weight': 0.40,
+            'normal_data_weight': 0.55,
+            'normal_prior_weight': 0.45,
             'sigma_j_prior': 0.12,
         }
         
