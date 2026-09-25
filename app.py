@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from hard_em import HardEMJumpDiffusion, get_player_log_returns
+from hard_em import HardEMJumpDiffusion, get_player_log_returns, get_player_info_on_date
 from monte_carlo import FootballerMonteCarlo
 from constrained_rls import ConstrainedRLS
 import os
@@ -23,23 +23,79 @@ st.title("Footballer Valuation Analysis")
 
 with st.sidebar:
     st.header("Player Selection")
-    player_name = st.text_input("Enter Player Name", "Pedri")
-    player_id = st.number_input("Transfermarkt ID", min_value=1, value=683840)
-    initial_value = st.number_input("Initial Value (in USD)", min_value=0, value=80_000_000, step=1_000_000)
-    player_age = st.number_input("Player Age", min_value=0, value=21, step=1)
-    position = st.selectbox("Position", ["Attack", "Midfield", "Defender", "Goalkeeper"])
+    @st.cache_data
+    def load_player_names():
+        df = pd.read_csv('players.csv')
+        return sorted(df['name'].dropna().unique().tolist())
+    
+    player_name = st.selectbox(
+        "Search for a player",
+        options=load_player_names(),
+        index=None,
+        placeholder="Type a name...",
+    )
+    
+    # Resolve the player ID
+    if player_name:
+        players_df = pd.read_csv('players.csv')
+        match = players_df[players_df['name'] == player_name]
+        if len(match) > 0:
+            player_id = int(match.iloc[0]['player_id'])
+            st.caption(f"ID: {player_id}")
+        else:
+            player_id = None
+            st.error("Player not found")
+    else:
+        player_id = None
     
     st.header("Analysis Parameters")
-
+    
     valuation_date = st.date_input(
-        "Valuation Date", value = pd.Timestamp.today(),
-        help="Use only data up to this date for backtesting"
+        "Valuation Date",
+        value=pd.Timestamp.today(),
+        help="The model uses valuations up to this date",
     )
-
+    
+    # Auto-fill value and age from the data
+    if player_id:
+        auto_value, auto_age, auto_pos, auto_date = get_player_info_on_date(player_id, valuation_date)
+        
+        if auto_value is not None:
+            st.caption(f"Valuation on {auto_date}: €{auto_value:,}")
+            initial_value = st.number_input(
+                "Current Value (€)",
+                min_value=0,
+                value=auto_value,
+                step=1_000_000,
+                help="Auto-filled from Transfermarkt. Override if needed.",
+            )
+        else:
+            st.warning("No valuation found before this date")
+            initial_value = st.number_input("Current Value (€)", min_value=0, value=50_000_000, step=1_000_000)
+        
+        if auto_age is not None:
+            st.caption(f"Age on {auto_date}: {auto_age}")
+            player_age = st.number_input(
+                "Player Age",
+                min_value=0,
+                value=auto_age,
+                step=1,
+                help="Auto-filled from date of birth. Override if needed.",
+            )
+        else:
+            player_age = st.number_input("Player Age", min_value=0, value=21, step=1)
+        
+        position = auto_pos if auto_pos else "Midfield"
+        st.caption(f"Position: {position}")
+    else:
+        initial_value = st.number_input("Current Value (€)", min_value=0, value=80_000_000, step=1_000_000)
+        player_age = st.number_input("Player Age", min_value=0, value=21, step=1)
+        position = "Midfield"
+    
     n_simulations = st.number_input("Number of Monte Carlo Simulations", min_value=1000, value=10000, step=1000)
-    # Use recent_years for EM window
-    recent_years = st.slider("Recent Years for EM",  min_value=1, max_value=4, disabled=False)
+    recent_years = st.slider("Recent Years for EM", min_value=1, max_value=4, value=2)
     seed = st.number_input("Random Seed (optional)", min_value=None, value=42)
+   
 
     run_button = st.button("Run Analysis")
 
