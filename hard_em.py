@@ -121,6 +121,41 @@ def get_player_log_returns(player_id = None, min_valuations=2, end_date= None):
     
     return pd.DataFrame(all_results)
 
+def get_player_info_on_date(player_id, date):
+
+    target = pd.Timestamp(date)
+
+    player_rows = players[players['player_id'] == player_id]
+    if len(player_rows) == 0:
+        return None, None, None, None
+    player = player_rows.iloc[0]
+    position = player.get('position', None)
+
+    vals = valuations[valuations['player_id'] == player_id].copy()
+    vals['date'] = pd.to_datetime(vals['date'])
+    vals = vals[vals['date'] <= target].sort_values('date')
+
+    if len(vals) == 0:
+        return None, None, position, None
+
+    latest = vals.loc[vals['date'].idxmax()]
+    valuation = int(latest['market_value_in_eur'])
+    actual_date = latest['date'].date()
+
+    age = None
+    dob = player.get('date_of_birth', None)
+
+    if pd.notna(dob):
+        try:
+            dob = pd.to_datetime(dob)
+            age = (pd.Timestamp(actual_date) - dob).days / 365.25
+            age = int(age)
+        except Exception:
+            age = None
+
+    return valuation, age, position, actual_date
+    
+
 pedri_only = get_player_log_returns(player_id=683840)
 print(pedri_only[['name', 'mu', 'sigma', 'n_log_returns']])
 
