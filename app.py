@@ -95,7 +95,12 @@ with st.sidebar:
     n_simulations = st.number_input("Number of Monte Carlo Simulations", min_value=1000, value=10000, step=1000)
     recent_years = st.slider("Recent Years for EM", min_value=1, max_value=4, value=2)
     
-    projection_years = 1 if player_age >= 30 else 2
+    if player_age >= 30:
+        projection_years = 1
+        st.info(f"Player is {player_age}. Projecting over 1 year (terminal decline regime).")
+    else:
+        projection_years = 2
+        st.info(f"Player is {player_age}. Projecting over 2 years (development arc).")
     
     seed = st.number_input("Random Seed (optional)", min_value=None, value=42)
    
