@@ -94,6 +94,18 @@ with st.sidebar:
     
     n_simulations = st.number_input("Number of Monte Carlo Simulations", min_value=1000, value=10000, step=1000)
     recent_years = st.slider("Recent Years for EM", min_value=1, max_value=4, value=2)
+    
+     # Auto-suggest horizon based on age
+    default_horizon = 1 if (player_id and auto_age and auto_age >= 30) else 2
+
+    projection_years = st.radio(
+        "Projection Horizon",
+        options=[1, 2],
+        index=0 if default_horizon == 1 else 1,
+        horizontal=True,
+        help="1 year for veterans (30+), 2 years for prospects and prime players"
+    )
+    
     seed = st.number_input("Random Seed (optional)", min_value=None, value=42)
    
 
@@ -147,7 +159,7 @@ if run_button:
             player_name=actual_name,
             initial_value=initial_value,
             results=results,
-            years=2,  # Always 3 years
+            years= projection_years,  # Always 3 years
             time_steps_per_year=4,
             n_simulations=n_simulations,
             log_returns = log_returns,
