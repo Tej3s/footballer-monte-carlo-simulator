@@ -21,8 +21,45 @@ st.set_page_config(page_title="Footballer Valuation Analysis", layout="wide")
 
 st.title("Footballer Valuation Analysis")
 
+@st.cache_data
+def load_players():
+    return pd.read_csv('players.csv')
+
+def compute_years_left(contract_expiration_date, valuation_date):
+    if pd.isna(contract_expiration_date):
+        return None
+    try:
+        expiry_ts = pd.to_datetime(contract_expiration_date)
+        return round((expiry_ts - pd.Timestamp(valuation_date)).days / 365.25, 2)
+    except Exception:
+        return None
+
+def is_retired(player_row, valuation_date):
+    last_season = player_row.get('last_season', None)
+    if pd.isna(last_season):
+        return False, None
+    try:
+        last_season = int(last_season)
+        years_inactive = pd.Timestamp(valuation_date).year - last_season
+        return years_inactive >= 2, years_inactive
+    except (ValueError, TypeError):
+        return False, None
+
+@st.dialog("Player Retired")
+def show_retired_dialog(player_name, last_season, years_inactive):
+    st.error(
+        f"**{player_name}** appears to be retired.\n\n"
+        f"Last active season: **{last_season}** "
+        f"({years_inactive} years before the valuation date).\n\n"
+        f"Please select an active player."
+    )
+    if st.button("OK", use_container_width=True):
+        st.rerun()
+
+
 with st.sidebar:
     st.header("Player Selection")
+     
     @st.cache_data
     def load_player_names():
         df = pd.read_csv('players.csv')
@@ -40,13 +77,18 @@ with st.sidebar:
         players_df = pd.read_csv('players.csv')
         match = players_df[players_df['name'] == player_name]
         if len(match) > 0:
+            player_row = match.iloc[0]
             player_id = int(match.iloc[0]['player_id'])
             st.caption(f"ID: {player_id}")
         else:
+            
+            
+            player_row = None
             player_id = None
             st.error("Player not found")
     else:
         player_id = None
+        player_row = None
     
     st.header("Analysis Parameters")
     
@@ -55,7 +97,40 @@ with st.sidebar:
         value=pd.Timestamp.today(),
         help="The model uses valuations up to this date",
     )
+
+
+
+
     
+    # Check if the player is retired
+    if player_row is not None:
+        retired, years_inactive = is_retired(player_row, valuation_date)
+        if retired:
+            show_retired_dialog(
+                                last_season = player_row.get('last_season'), 
+                                years_inactive = years_inactive,
+                                player_name=player_row['name'],
+                               )
+            st.stop()
+
+       
+
+        years_left = compute_years_left(
+            player_row.get('contract_expiration_date', None),
+            valuation_date,
+        )
+        if years_left is not None:
+            if years_left < 0:
+                st.error(f" Contract expired {abs(years_left):.1f} years ago")
+            elif years_left < 1.0:
+                st.warning(f" Contract expires in {years_left:.1f} years — free-transfer regime")
+            elif years_left < 2.0:
+                st.info(f"Contract expires in {years_left:.1f} years — reduced leverage")
+            else:
+                st.success(f"Contract: {years_left:.1f} years left")
+        else:
+            st.caption("Contract expiry: unknown")
+
     # Auto-fill value and age from the data
     if player_id:
         auto_value, auto_age, auto_pos, auto_date = get_player_info_on_date(player_id, valuation_date)
@@ -95,12 +170,16 @@ with st.sidebar:
     n_simulations = st.number_input("Number of Monte Carlo Simulations", min_value=1000, value=10000, step=1000)
     recent_years = st.slider("Recent Years for EM", min_value=1, max_value=4, value=2)
     
+    # Auto-suggest horizon based on age
     if player_age >= 27:
         projection_years = 1
         st.info(f"Player is {player_age}. Projecting over 1 year (terminal decline regime).")
     else:
         projection_years = 2
         st.info(f"Player is {player_age}. Projecting over 2 years (development arc).")
+    
+    
+    
     
     seed = st.number_input("Random Seed (optional)", min_value=None, value=42)
    
