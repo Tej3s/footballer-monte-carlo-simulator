@@ -115,25 +115,32 @@ with st.sidebar:
             st.stop()
 
        
+        today = pd.Timestamp.today().date()
+        is_live = (valuation_date == today)
+
+
 
         years_left = compute_years_left(
             player_row.get('contract_expiration_date', None),
             valuation_date,
-        )
-        if years_left is not None:
-            if years_left < 0:
-                st.error(f" Contract expired {abs(years_left):.1f} years ago")
-            elif years_left < 1.0:
-                st.warning(f" Contract expires in {years_left:.1f} years — free-transfer regime")
-            elif years_left < 2.0:
-                st.info(f"Contract expires in {years_left:.1f} years — reduced leverage")
-            else:
-                st.success(f"Contract: {years_left:.1f} years left")
-        else:
-            st.caption("Contract expiry: unknown")
+        ) if is_live else None
 
-        today = pd.Timestamp.today().date()
-        if valuation_date == today:
+        if is_live:
+
+            if years_left is not None:
+                if years_left < 0:
+                    st.error(f" Contract expired {abs(years_left):.1f} years ago")
+                elif years_left < 1.0:
+                    st.warning(f" Contract expires in {years_left:.1f} years — free-transfer regime")
+                elif years_left < 2.0:
+                    st.info(f"Contract expires in {years_left:.1f} years — reduced leverage")
+                else:
+                    st.success(f"Contract: {years_left:.1f} years left")
+            else:
+                st.caption("Contract expiry: unknown")
+
+       
+       
 
             contract_status = compute_contract_status(
                 player_row.get('contract_expiration_date', None),
