@@ -34,9 +34,7 @@ class ConstrainedRLS:
             'sigma_j_prior': 0.12,
         }
         
-        # ✅ Extract from database
-        self.position_priors = self._extract_position_priors()
-        self.age_priors = self.extract_age_priors()
+      
         
         # Default priors (fallback)
         self.default_priors = {
@@ -60,66 +58,6 @@ class ConstrainedRLS:
         
         
         print(f"   Edge case weights: data={self.edge_case_weights['extreme_data_weight']:.2f}, prior={self.edge_case_weights['extreme_prior_weight']:.2f}")
-    
-    def _extract_position_priors(self) -> Dict:
-        """Extract position priors from the loaded database."""
-        position_priors = {}
-        
-        if self.prior_db:
-            for position in ['Attack', 'Midfield', 'Defender', 'Goalkeeper']:
-                if position in self.prior_db:
-                    p = self.prior_db[position]
-                    position_priors[position] = {
-                        'mu': p['mu']['mean'],
-                        'sigma': p['sigma']['mean'],
-                        'mu_J': p['mu_J']['mean'],
-                        'sigma_J': p['sigma_J']['mean'], 'lambda': p['lambda']['mean'],   
-                    }
-                elif (position, 'all') in self.prior_db:
-                    p = self.prior_db[(position, 'all')]
-                    position_priors[position] = {
-                        'mu': p['mu']['mean'],
-                        'sigma': p['sigma']['mean'],
-                        'mu_J': p['mu_J']['mean'],
-                        'sigma_J': p['sigma_J']['mean'], 'lambda': p['lambda']['mean'],   
-                    }
-        
-        # Fallback to defaults if database is empty
-        if not position_priors:
-            print("  No priors in database, using defaults")
-            for position in ['Attack', 'Midfield', 'Defender', 'Goalkeeper']:
-                position_priors[position] = {
-                    'mu': 0.05,
-                    'sigma': 0.18,
-                    'mu_J': 0.15,
-                    'sigma_J': 0.10,
-                    'lambda': 0.015,
-                }
-        
-        return position_priors
-
-    def extract_age_priors(self) -> Dict:
-
-        age_priors = {}
-
-        if self.prior_db:
-            for key, p in self.prior_db.items():
-                if isinstance(key, tuple):
-                    pos, age_group = key
-                    age_priors[(pos, age_group)] = {
-                        'mu': p['mu']['mean'],
-                        'sigma': p['sigma']['mean'],
-                        'mu_J': p['mu_J']['mean'],
-                        'sigma_J': p['sigma_J']['mean'],
-                        'lambda': p['lambda']['mean'],
-                        'mu_J_up': p['mu_J_up']['mean'],
-                        'mu_J_down': p['mu_J_down']['mean'],
-                        'sigma_J_up': p['sigma_J_up']['mean'],
-                        'sigma_J_down': p['sigma_J_down']['mean'],
-                        'lambda_up': p['lambda_up']['mean'],
-                        'lambda_down': p['lambda_down']['mean'],
-                    }
-        return age_priors
     
     def age_to_group(self, age: Optional[int]) -> Optional[str]:
         """Convert numeric age to age group label."""
@@ -187,22 +125,21 @@ class ConstrainedRLS:
             
         
         # Try from database
-        if position in self.position_priors:
-            p = self.position_priors[position]
-            return {
-                 'mu_0': p['mu'],
-                'sigma_0': p['sigma'],
-                'mu_j_0': p['mu_J'],
-                'sigma_j_0': p['sigma_J'],
-                'lambda_0': p['lambda'],
-                 # Fallbacks for asymmetric params
-                'mu_j_up_0': p['mu_J'] if p['mu_J'] > 0 else 0.15,
-                'mu_j_down_0': p['mu_J'] if p['mu_J'] < 0 else -0.15,
-                'sigma_j_up_0': p['sigma_J'],
-                'sigma_j_down_0': p['sigma_J'],
-                'lambda_up_0': p['lambda'] / 2,
-                'lambda_down_0': p['lambda'] / 2,
-                
+        # Level 3: position-only
+        if position in self.prior_db:
+           p = self.prior_db[position]
+           return {
+                'mu_0': p['mu']['mean'],
+                'sigma_0': p['sigma']['mean'],
+                'mu_j_0': p['mu_J']['mean'],
+                'sigma_j_0': p['sigma_J']['mean'],
+                'lambda_0': p['lambda']['mean'],
+                'mu_j_up_0': p['mu_J_up']['mean'],
+                'mu_j_down_0': p['mu_J_down']['mean'],
+                'sigma_j_up_0': p['sigma_J_up']['mean'],
+                'sigma_j_down_0': p['sigma_J_down']['mean'],
+                'lambda_up_0': p['lambda_up']['mean'],
+                'lambda_down_0': p['lambda_down']['mean'],
                 'position': position,
             }
         
