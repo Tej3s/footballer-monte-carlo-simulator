@@ -122,7 +122,7 @@ class ConstrainedRLS:
         return age_priors
     
     def age_to_group(self, age: Optional[int]) -> Optional[str]:
-   
+        """Convert numeric age to age group label."""
         if age is None:
             return None
         if age < 22:
@@ -142,28 +142,49 @@ class ConstrainedRLS:
         else:
             return 'aged'
 
-    def get_priors(self, position: str, age: Optional[int]=None) -> Dict:
+    def get_priors(self, position, age=None, contract_status=None):
         """Get priors for a specific position."""
 
         age_group = self.age_to_group(age)
         
-        # Try position-specific priors first
-        if age_group and (position, age_group) in self.age_priors:
-            p = self.age_priors[(position, age_group)]
+        # Level 1: (position, age_group, contract_status)
+        if (contract_status and age_group and
+        (position, age_group, contract_status) in self.prior_db):
+            p = self.prior_db[(position, age_group, contract_status)]
             return {
-                'mu_0': p['mu'],
-                'sigma_0': p['sigma'],
-                'mu_j_0': p['mu_J'],
-                'sigma_j_0': p['sigma_J'],
-                'lambda_0': p['lambda'],
-                 'mu_j_up_0': p['mu_J_up'],
-                'mu_j_down_0': p['mu_J_down'],
-                'sigma_j_up_0': p['sigma_J_up'],
-                'sigma_j_down_0': p['sigma_J_down'],
-                'lambda_up_0': p['lambda_up'],
-                'lambda_down_0': p['lambda_down'],
+                'mu_0': p['mu']['mean'],
+                'sigma_0': p['sigma']['mean'],
+                'mu_j_0': p['mu_J']['mean'],
+                'sigma_j_0': p['sigma_J']['mean'],
+                'lambda_0': p['lambda']['mean'],
+                'mu_j_up_0': p['mu_J_up']['mean'],
+                'mu_j_down_0': p['mu_J_down']['mean'],
+                'sigma_j_up_0': p['sigma_J_up']['mean'],
+                'sigma_j_down_0': p['sigma_J_down']['mean'],
+                'lambda_up_0': p['lambda_up']['mean'],
+                'lambda_down_0': p['lambda_down']['mean'],
+                'position': f"{position},{age_group},{contract_status}",
+            }
+
+            # Level 2: (position, age_group)
+        if age_group and (position, age_group) in self.prior_db:
+            p = self.prior_db[(position, age_group)]
+            return {
+                'mu_0': p['mu']['mean'],
+                'sigma_0': p['sigma']['mean'],
+                'mu_j_0': p['mu_J']['mean'],
+                'sigma_j_0': p['sigma_J']['mean'],
+                'lambda_0': p['lambda']['mean'],
+                'mu_j_up_0': p['mu_J_up']['mean'],
+                'mu_j_down_0': p['mu_J_down']['mean'],
+                'sigma_j_up_0': p['sigma_J_up']['mean'],
+                'sigma_j_down_0': p['sigma_J_down']['mean'],
+                'lambda_up_0': p['lambda_up']['mean'],
+                'lambda_down_0': p['lambda_down']['mean'],
                 'position': f"{position},{age_group}",
             }
+    
+            
         
         # Try from database
         if position in self.position_priors:
@@ -174,6 +195,14 @@ class ConstrainedRLS:
                 'mu_j_0': p['mu_J'],
                 'sigma_j_0': p['sigma_J'],
                 'lambda_0': p['lambda'],
+                 # Fallbacks for asymmetric params
+                'mu_j_up_0': p['mu_J'] if p['mu_J'] > 0 else 0.15,
+                'mu_j_down_0': p['mu_J'] if p['mu_J'] < 0 else -0.15,
+                'sigma_j_up_0': p['sigma_J'],
+                'sigma_j_down_0': p['sigma_J'],
+                'lambda_up_0': p['lambda'] / 2,
+                'lambda_down_0': p['lambda'] / 2,
+                
                 'position': position,
             }
         
@@ -184,6 +213,13 @@ class ConstrainedRLS:
             'mu_j_0': self.default_priors['mu_J'],
             'sigma_j_0': self.default_priors['sigma_J'],
             'lambda_0': self.default_priors['lambda'],
+            'mu_j_up_0': 0.15,
+            'mu_j_down_0': -0.15,
+            'sigma_j_up_0': 0.15,
+            'sigma_j_down_0': 0.15,
+            'lambda_up_0': 0.01,
+            'lambda_down_0': 0.01,
+
             'position': 'default'
         }
     
@@ -231,11 +267,12 @@ class ConstrainedRLS:
                   n_obs: int, 
                   position: str,
                   age: Optional[int] = None,
+                  contract_status: Optional[str] = None,
                   current_value: Optional[float] = None,
                   verbose: bool = False) -> Dict:
         """Apply RLS to edge cases."""
         
-        priors = self.get_priors(position, age)
+        priors = self.get_priors(position, age, contract_status)
         fixed = results.copy()
         
         if n_obs <= 3:
@@ -403,6 +440,7 @@ class ConstrainedRLS:
                  log_returns: np.ndarray,
                  position: str,
                  age: Optional[int] = None,
+                 contract_status: Optional[str] = None,
                  current_value: Optional[float] = None,
                  hard_em_results: Optional[Dict] = None,
                  verbose: bool = False) -> Dict:
@@ -424,7 +462,13 @@ class ConstrainedRLS:
             if verbose:
                 print(f"\n  EDGE CASE DETECTED: {', '.join(reasons)}")
             results = self.apply_rls(
-                results, n_obs, position, age, current_value, verbose
+                results = results, 
+                n_obs = n_obs,
+                position = position,
+                age = age,
+                contract_status = contract_status,
+                current_value = current_value,
+                verbose = verbose
             )
         else:
             if verbose:

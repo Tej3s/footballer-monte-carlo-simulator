@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from hard_em import HardEMJumpDiffusion, get_player_log_returns, get_player_info_on_date
 from monte_carlo import FootballerMonteCarlo
 from constrained_rls import ConstrainedRLS
+from finding_priors import compute_contract_status
 import os
 import sys
 
@@ -131,6 +132,20 @@ with st.sidebar:
         else:
             st.caption("Contract expiry: unknown")
 
+        today = pd.Timestamp.today().date()
+        if valuation_date == today:
+
+            contract_status = compute_contract_status(
+                player_row.get('contract_expiration_date', None),
+                valuation_date,
+        )
+        else:
+            contract_status = None
+            st.caption("Contract data only applies for today's date. "
+                       "Historical valuations use position × age priors.")
+    else:
+        contract_status = None 
+
     # Auto-fill value and age from the data
     if player_id:
         auto_value, auto_age, auto_pos, auto_date = get_player_info_on_date(player_id, valuation_date)
@@ -223,6 +238,7 @@ if run_button:
             log_returns=log_returns,
             position= position,       # ← ADD THIS
             age=player_age,
+            contract_status=contract_status,
             current_value=initial_value,
             hard_em_results=results,
             verbose=False        

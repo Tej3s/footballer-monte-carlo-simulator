@@ -6,6 +6,41 @@ from typing import Dict, Optional
 from hard_em import get_player_log_returns, HardEMJumpDiffusion
 
 
+def compute_contract_status(contract_expiration_date, valuation_date):
+    if pd.isna(contract_expiration_date):
+        return None
+    try:
+        expiry_ts = pd.to_datetime(contract_expiration_date)
+        years_left = round((expiry_ts - pd.Timestamp(valuation_date)).days / 365.25, 2)
+        if years_left >= 2.0:
+            return 'secure'
+        elif years_left >= 1.0:
+            return 'running_down'
+        else:
+            return 'expiring'
+            
+    except Exception:
+        return None
+
+def attach_contract_status(all_players: pd.DataFrame) -> pd.DataFrame:
+    players_df = pd.read_csv('players.csv')
+    contract_lookup = dict(zip(
+        players_df['player_id'],
+        players_df['contract_expiration_date']
+    ))
+    
+    contract_statuses = []
+    for _, row in all_players.iterrows():
+        pid = row['player_id']
+        last_date = row.get('last_date', None)
+        expiry = contract_lookup.get(pid, None)
+        status = compute_contract_status(expiry, last_date) if last_date else None
+        contract_statuses.append(status)
+    
+    all_players = all_players.copy()
+    all_players['contract_status'] = contract_statuses
+    return all_players
+
 def build_prior_database(min_valuations: int = 15, verbose: bool = True) -> Dict:
     
     if verbose:
@@ -26,6 +61,8 @@ def build_prior_database(min_valuations: int = 15, verbose: bool = True) -> Dict
     if verbose:
         print(f"Loaded {len(all_players)} players")
         print(f"Columns: {all_players.columns.tolist()}")
+
+    all_players = attach_contract_status(all_players)
     
     # Step 2: Check observation column
     if 'n_valuations' in all_players.columns:
@@ -67,9 +104,11 @@ def build_prior_database(min_valuations: int = 15, verbose: bool = True) -> Dict
         'prime_later': (26, 28),
         'prime_even_later': (28, 30),
         'veteran': (30, 32),
-        'aging_veteran': (32,34),
+        'aging_veteran':(32,34),
         'aged': (34, 99)
     }
+
+    contract_groups = ['secure', 'running_down', 'expiring']
     
     for position in good_players['position'].unique():
         if verbose:
@@ -84,7 +123,32 @@ def build_prior_database(min_valuations: int = 15, verbose: bool = True) -> Dict
                     (pos_players['age'] >= age_min) & 
                     (pos_players['age'] < age_max)
                 ]
+
+                age_players_with_contract = age_players[
+                age_players['contract_status'].notna()
+                ]
                 
+
+                
+                for contract_status in contract_groups:
+                    cohort = age_players_with_contract[
+                        age_players_with_contract['contract_status'] == contract_status
+                    ]
+                   
+                
+                    if len(cohort) >= 10:
+                        if verbose:
+                            print(f" {age_group}, {contract_status}: {len(cohort)} players")
+                        prior_db[(position, age_group, contract_status)] = calculate_priors(cohort)
+
+             # --- Level 2: (position, age_group) ---
+            for age_group, (age_min, age_max) in age_groups.items():
+                age_players = pos_players[
+                    (pos_players['age'] >= age_min) &
+                    (pos_players['age'] < age_max)
+                ]
+
+
                 if len(age_players) >= 10:
                     if verbose:
                         print(f"    {age_group}: {len(age_players)} players")
@@ -112,11 +176,14 @@ def build_prior_database(min_valuations: int = 15, verbose: bool = True) -> Dict
         print(f"{'='*60}")
         
         for key in prior_db.keys():
-            if isinstance(key, tuple):
-                pos, age = key
-                label = f"{pos}, {age}"
-            else:
+            if isinstance(key, str):
                 label = key
+            elif isinstance(key, tuple) and len(key) == 2:
+                label = f"{key[0]}, {key[1]}"
+            elif isinstance(key, tuple) and len(key) == 3:
+                label = f"{key[0]}, {key[1]}, {key[2]}"
+            else:
+                label = str(key)
             print(f"  {label}: {prior_db[key]['n_players']} players")
     
     return prior_db
@@ -340,13 +407,15 @@ def inspect_prior_database(filepath: str = 'prior_db.pkl'):
     
     position_groups = {}
     age_groups = {}
+    contract_groups = {}
     
     for key, priors in prior_db.items():
-        if isinstance(key, tuple):
-            pos, age = key
-            age_groups[(pos, age)] = priors
-        else:
+        if isinstance(key, str):
             position_groups[key] = priors
+        elif isinstance(key, tuple) and len(key) == 2:
+            age_groups[key] = priors
+        elif isinstance(key, tuple) and len(key) == 3:
+            contract_groups[key] = priors
     
     if position_groups:
         print(f"\n POSITION-ONLY PRIORS (fallback):")
@@ -383,6 +452,18 @@ def inspect_prior_database(filepath: str = 'prior_db.pkl'):
                   f"(up: {priors['sigma_J_up']['mean']:.4f}, "
                   f"down: {priors['sigma_J_down']['mean']:.4f})")
             print(f"    n_players: {priors['n_players']}")
+
+    if contract_groups:
+        print(f"\n CONTRACT-AWARE PRIORS (most specific):")
+        print("-" * 50)
+        for (position, age_group, contract), priors in contract_groups.items():
+            print(f"\n  {position} | {age_group} | {contract}:")
+            print(f"    μ:     {priors['mu']['mean']:+.4f} ± {priors['mu']['std']:.4f}")
+            print(f"    σ:     {priors['sigma']['mean']:.4f} ± {priors['sigma']['std']:.4f}")
+            print(f"    λ:     {priors['lambda']['mean']:.4f}")
+            print(f"    μ_J:   {priors['mu_J']['mean']:+.4f}")
+            print(f"    σ_J:   {priors['sigma_J']['mean']:.4f}")
+            print(f"    n:     {priors['n_players']}")
 
 
 if __name__ == "__main__":
