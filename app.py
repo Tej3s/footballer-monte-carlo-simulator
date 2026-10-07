@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from hard_em import HardEMJumpDiffusion, get_player_log_returns, get_player_info_on_date
 from monte_carlo import FootballerMonteCarlo
 from constrained_rls import ConstrainedRLS
-import finding_priors
+from finding_priors import compute_contract_status
 import os
 import sys
 
