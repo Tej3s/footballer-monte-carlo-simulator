@@ -77,16 +77,43 @@ with st.sidebar:
     if player_name:
         players_df = pd.read_csv('players.csv')
         match = players_df[players_df['name'] == player_name]
-        if len(match) > 0:
-            player_row = match.iloc[0]
-            player_id = int(match.iloc[0]['player_id'])
-            st.caption(f"ID: {player_id}")
-        else:
-            
-            
+        if len(match) == 0:
             player_row = None
             player_id = None
             st.error("Player not found")
+
+        elif len(match) == 1:
+
+            player_row = match.iloc[0]
+            player_id = int(match.iloc[0]['player_id'])
+            st.caption(f"ID: {player_id}")
+
+        else:
+              # Multiple matches — let the user choose
+            st.warning(f"{len(match)} players found with this name. Please select one.")
+            options = []
+
+            for _, row in match.iterrows():
+            # Build a label with distinguishing info
+                dob = row.get('date_of_birth', 'unknown')
+                pos = row.get('position', 'unknown')
+                club = row.get('current_club_name', 'unknown')
+                label = f"ID {int(row['player_id'])} — {pos} — born {dob} — {club}"
+                options.append(label)
+        
+            chosen = st.selectbox("Select player", options=options, index=None, placeholder="Choose...")
+        
+            if chosen:
+                chosen_idx = options.index(chosen)
+                player_row = match.iloc[chosen_idx]
+                player_id = int(player_row['player_id'])
+                st.caption(f"ID: {player_id}")
+            else:
+                player_row = None
+                player_id = None
+            
+            
+    
     else:
         player_id = None
         player_row = None
