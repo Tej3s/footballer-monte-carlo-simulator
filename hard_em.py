@@ -485,6 +485,17 @@ class HardEMJumpDiffusion:
             self._print_summary(results)
         
         return results
+
+
+    def _print_summary(self, results: Dict):
+        print(f"drift: {results['mu']:.4f}")
+        print(f"   σ (volatility):     {results['sigma']:.4f}")
+        print(f"   λ (jump freq):      {results['lambda']:.4f}")
+        print(f"   μ_J (jump mean):    {results['mu_J']:.4f}")
+        print(f"   σ_J (jump std):     {results['sigma_J']:.4f}")
+        print(f"   Jumps detected:     {results['n_jumps']}")
+        print(f"   Iterations:         {results['iterations']}")
+        print(f"   Observations:       {results['n_observations']}")
     
   
 
