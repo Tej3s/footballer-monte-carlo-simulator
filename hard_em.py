@@ -14,6 +14,7 @@ from scipy.stats import poisson, norm
 import os
 import sys
 
+
 # Add the script's directory to Python's path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(script_dir)
@@ -121,6 +122,12 @@ def get_player_log_returns(player_id = None, min_valuations=2, end_date= None):
     
     return pd.DataFrame(all_results)
 
+
+
+all_players = get_player_log_returns(min_valuations = 2)
+all_players.to_csv('all_players_log_returns.csv', index=False)
+print(" Saved all_players to CSV")
+
 def get_player_info_on_date(player_id, date):
 
     target = pd.Timestamp(date)
@@ -154,15 +161,6 @@ def get_player_info_on_date(player_id, date):
             age = None
 
     return valuation, age, position, actual_date
-    
-
-pedri_only = get_player_log_returns(player_id=683840)
-print(pedri_only[['name', 'mu', 'sigma', 'n_log_returns']])
-
-
-all_players = get_player_log_returns(min_valuations = 2)
-all_players.to_csv('all_players_log_returns.csv', index=False)
-print("💾 Saved all_players to CSV")
 
 
 
@@ -265,10 +263,6 @@ class HardEMJumpDiffusion:
                         # After EM assigns jumps, verify they meet the threshold
 # If not, force them to be non-jumps
 
-        if verbose:
-            print(f"Initial jumps: {len(initial_jumps)}")
-            print(f"Optimal window size: {optimal_window}")
-
              
         mu = np.mean(x)
         sigma = np.std(x)
@@ -321,14 +315,6 @@ class HardEMJumpDiffusion:
         self.history = []
 
 
-
-    
-        if verbose:
-            print(f"\n   Initial parameters:")
-            print(f"   μ = {mu:.4f}, σ = {sigma:.4f}")
-            print(f"   λ_up = {lamb_up:.4f}, λ_down = {lamb_down:.4f}")
-            print(f"   μ_J_up = {mu_J_up:.4f}, μ_J_down = {mu_J_down:.4f}")
-            print(f"   σ_J_up = {sigma_J_up:.4f}, σ_J_down = {sigma_J_down:.4f}")
 
        
         k_t = np.zeros(n, dtype=int)
@@ -461,12 +447,7 @@ class HardEMJumpDiffusion:
             sigma_J_up, sigma_J_down = sigma_J_up_new, sigma_J_down_new
             lamb, mu_J, sigma_J = lamb_new, mu_J_new, sigma_J_new
             
-            if verbose and iteration % 10 == 0:
-                print(f"\n   Iteration {iteration+1}:")
-                print(f"      μ = {mu:.4f}, σ = {sigma:.4f}")
-                print(f"      λ_up = {lamb_up:.4f}, λ_down = {lamb_down:.4f}")
-                print(f"      μ_J_up = {mu_J_up:.4f}, μ_J_down = {mu_J_down:.4f}")
-                print(f"      jumps = {n_jumps}, max_diff = {max_diff:.6f}")
+         
 
             
             if max_diff < self.tol:
@@ -516,64 +497,6 @@ class HardEMJumpDiffusion:
         print(f"   Observations:       {results['n_observations']}")
 
 
-    @staticmethod
-    def analyze_hard_em_results(results: Dict, log_returns: List[float]):
-        k_t = results['k_t']
-       
-        n_jumps = results['n_jumps']
-        mu_J = results['mu_J']
-        sigma_J = results['sigma_J']
-        
-        
-        if n_jumps > 0:
-            jump_indices = results['jump_indices']
-            jump_returns = [log_returns[i] for i in jump_indices]
-            print(f"\n2. Jump Sizes:")
-            print(f"   Mean jump log-return: {np.mean(jump_returns):.4f}")
-            print(f"   Std jump log-return: {np.std(jump_returns):.4f}")
-            print(f"   Largest jump: {np.max(jump_returns):.4f}")
-            print(f"   Smallest jump: {np.min(jump_returns):.4f}")
-        else:
-            print("No jumps detected in the data.")    
+   
 
-        history = results['history']
-        if history:
-            print(f"\n3. Convergence:")
-            print(f"   Iterations: {results['iterations']}")
-            print(f"   Final max_diff: {history[-1]['max_diff']:.6f}")
-    
-
-# In a new session or different script
-pedri_log_returns = pedri_only.iloc[0]['log_returns']
-pedri_name = pedri_only.iloc[0]['name']
-
-
-print("=" * 60)
-
-
-
-# Run Hard EM
-hard_em = HardEMJumpDiffusion(max_iter=50, kmax=1)
-results = hard_em.fit(pedri_log_returns, dt=1.0)
-optimal_window = hard_em.find_optimal_window_em(pedri_log_returns)
-print(f"\nOptimal window size for local volatility estimation: {optimal_window}")
-# Print results
-hard_em._print_summary(results)
-
-best_C = hard_em.find_optimal_c_percentile(pedri_log_returns, window=optimal_window, target_percentile=0.95)
-print(f"Optimal C: {best_C:.2f}")
-
-# Extract parameters
-mu = results['mu']
-sigma = results['sigma']
-lambda_jump = results['lambda']
-mu_J = results['mu_J']
-sigma_J = results['sigma_J']
-
-print(f"\n Pedri's Jump-Diffusion Parameters:")
-print(f"   μ = {mu:.4f}")
-print(f"   σ = {sigma:.4f}")
-print(f"   λ = {lambda_jump:.4f}")
-print(f"   μ_J = {mu_J:.4f}")
-print(f"   σ_J = {sigma_J:.4f}")
 
