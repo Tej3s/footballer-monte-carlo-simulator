@@ -296,7 +296,6 @@ class ConstrainedRLS:
         else:
             sigma_j_new = normal_data_weight * sigma_j_data + normal_prior_weight * priors['sigma_j_0']
         
-        sigma_j_new = np.clip(sigma_j_new, 0.02, 0.40)
         fixed['sigma_J'] = sigma_j_new
         
         # === RLS: λ ===
