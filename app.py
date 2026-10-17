@@ -218,7 +218,8 @@ with st.sidebar:
     
     n_simulations = st.number_input("Number of Monte Carlo Simulations", min_value=1000, value=10000, step=1000)
     recent_years = st.slider("Recent Years for EM", min_value=1, max_value=4, value=2)
-    
+
+
     # Auto-suggest horizon based on age
     if player_age >= 27:
         projection_years = 1
@@ -246,8 +247,19 @@ if run_button:
         log_returns = player_data.iloc[0]['log_returns']
         actual_name = player_data.iloc[0]['name']
 
+        n_observations = len(log_returns)
+        
         st.success(f"Found {actual_name} ({len(log_returns)} log-returns)")
 
+        if n_observations <= 6:
+            recent_years = 1
+            st.warning(
+        f"Only {n_observations} observations found. "
+        f"EM window locked to 1 year to prevent overfitting."
+    )
+    # Projection horizon stays at 2 years for wonderkids
+        projection_years = 2
+        
         # Use the slider value for EM window
         recent_obs = recent_years * 3
         recent_log_returns = log_returns[-recent_obs:] if len(log_returns) >= recent_obs else log_returns
