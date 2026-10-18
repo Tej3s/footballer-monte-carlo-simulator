@@ -374,13 +374,15 @@ class HardEMJumpDiffusion:
                 lamb_up_new = len(up_idx) / (n * dt)
                 lamb_down_new = len(down_idx) / (n * dt)
 
+                non_jump_idx = np.where(k_t == 0)[0]
+                mu_non_jump = np.mean(x[non_jump_idx]) if len(non_jump_idx) > 0 else mu
             
                 # Upward jumps
                 if len(up_idx) >= 3:
-                    mu_J_up_new = np.mean(x[up_idx]) - mu
-                    sigma_J_up_new = np.std(x[up_idx] - mu - mu_J_up_new)
+                    mu_J_up_new = np.mean(x[up_idx]) - mu_non_jump
+                    sigma_J_up_new = np.std(x[up_idx] - mu_non_jump - mu_J_up_new)
                 elif len(up_idx) >= 1:
-                    mu_J_up_new = np.mean(x[up_idx]) - mu
+                    mu_J_up_new = np.mean(x[up_idx]) - mu_non_jump
                     sigma_J_up_new = max(sigma * 0.5, 0.10)
                 else:
                     mu_J_up_new = 0.0
@@ -389,10 +391,10 @@ class HardEMJumpDiffusion:
 
                  # Downward jumps
                 if len(down_idx) >= 3:
-                    mu_J_down_new = np.mean(x[down_idx]) - mu
-                    sigma_J_down_new = np.std(x[down_idx] - mu - mu_J_down_new)
+                    mu_J_down_new = np.mean(x[down_idx]) - mu_non_jump
+                    sigma_J_down_new = np.std(x[down_idx] - mu_non_jump - mu_J_down_new)
                 elif len(down_idx) >= 1:
-                    mu_J_down_new = np.mean(x[down_idx]) - mu
+                    mu_J_down_new = np.mean(x[down_idx]) - mu_non_jump
                     sigma_J_down_new = max(sigma * 0.5, 0.10)
                 else:
                     mu_J_down_new = 0.0
@@ -485,8 +487,7 @@ class HardEMJumpDiffusion:
             self._print_summary(results)
         
         return results
-
-
+    
     def _print_summary(self, results: Dict):
         print(f"drift: {results['mu']:.4f}")
         print(f"   σ (volatility):     {results['sigma']:.4f}")
@@ -496,8 +497,6 @@ class HardEMJumpDiffusion:
         print(f"   Jumps detected:     {results['n_jumps']}")
         print(f"   Iterations:         {results['iterations']}")
         print(f"   Observations:       {results['n_observations']}")
-    
-  
 
 
    
