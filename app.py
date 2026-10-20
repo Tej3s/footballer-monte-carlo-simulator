@@ -251,7 +251,7 @@ if run_button:
         
         st.success(f"Found {actual_name} ({len(log_returns)} log-returns)")
 
-        if n_observations <= 6:
+        if n_observations <= 7:
             recent_years = 1
             st.warning(
         f"Only {n_observations} observations found. "
